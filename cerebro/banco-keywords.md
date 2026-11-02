@@ -68,7 +68,8 @@ Y también el gremio solo: `logopedia`, `terapia ocupacional`.
 
 - **10-12 keywords por mercado**, 4-6 rondas de scroll cada una (breadth-first).
 - El filtro caro es el embudo, no el listado: mejor 40 candidatos someros que 4 profundos.
-- Anotar en `salidas/` y volcar los que pasen cohorte a `historial.md`.
+- Anotar en `salidas/` y `caza_final.py` vuelca cada verificado con su motivo a `salidas/historico.csv`.
+- `revisar/tasa_oficio.py` lista qué keywords traen señal: las que marca «← podar» salen del banco.
 - **Calibración obligatoria:** antes de una caza nueva, buscar dos o tres productos ya conocidos
   (por ejemplo los del vídeo: `logopedia`, `marroquinería`, `talleres`). Si el buscador no los
   encuentra, el problema es el instrumento, no el mercado.

@@ -16,6 +16,9 @@ Un candidato solo pasa si cumple **las cinco**:
 
 Si falla una, se descarta y se anota el motivo en una línea.
 
+> Esta vara está en código en `scripts/nucleo.py` (`VARA`, `nivel()`, `clasifica_landing()`).
+> Si cambias un umbral aquí, cámbialo allí; las pruebas (`tests/`) fallan si se desalinean.
+
 ## 2. Umbrales numéricos
 
 | Señal | Mirar | Profundizar | Ganador |
@@ -24,6 +27,8 @@ Si falla una, se descarta y se anota el motivo en una línea.
 | Antigüedad máxima de un anuncio vivo | ≥ 21 días | ≥ 45 días | ≥ 120 días |
 | Creativos duplicados del mismo ángulo | 3 | 6 | 10+ |
 | Competidores en el mercado destino | — | 0-3 | 0-1 |
+
+**Cómo se combinan:** cada nivel exige cohorte **y** antigüedad de ese nivel (ganador = cohorte ≥ 20 y un anuncio vivo de ≥ 120 días). Con cohorte ≥ 3 nunca baja de «mirar». 10+ duplicados suben un escalón solo si la antigüedad ya lo respalda.
 
 **La cohorte es lo que cuenta**, no el total de anuncios activos. Una página con 100 ads y 0 en cohorte es una fábrica de churn.
 
@@ -58,4 +63,4 @@ Si una caza nueva no mejora al menos uno de los dos números, el cambio de méto
 
 ## 6. Lo que hay que registrar siempre
 
-Por cada producto cazado: nicho, mercado, `page_id`, cohorte 7+/total, antigüedad máxima, destino, precio, tipo de embudo y **motivo del descarte si no pasa**. Sin el motivo, el histórico no enseña nada.
+`caza_final.py` lo hace solo en `salidas/historico.csv`. Por cada producto cazado: nicho, mercado, `page_id`, cohorte 7+/total, antigüedad máxima, destino, precio, tipo de embudo y **motivo del descarte si no pasa**. Sin el motivo, el histórico no enseña nada.

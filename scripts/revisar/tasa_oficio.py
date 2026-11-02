@@ -1,51 +1,82 @@
-﻿# -*- coding: utf-8 -*-
-"""Tasa de la caza por oficios: solo ES e IT con las keywords nuevas."""
-import json
+# -*- coding: utf-8 -*-
+"""Tasas de la caza (vara §5), calculadas de los datos, nada escrito a mano.
+
+Uso:  python scripts/revisar/tasa_oficio.py [--mercados ES IT]
+
+tasa de señal  = anunciantes con cohorte >= 3 / anunciantes leídos
+tasa de modelo = modelables verificados / candidatos verificados
+Compara con la caza anterior registrada en salidas/tasas.csv y dice si el método mejoró.
+"""
+import argparse
+import csv
+import datetime as dt
 import os
-import sys
 
-sys.stdout.reconfigure(encoding="utf-8")
-SAL = r"C:\Users\USUARIO\Documents\deepseek-harness\default-workspace\negocio\salidas"
+from _comun import N
 
-ads = []
-for mk in ("ES", "IT"):
-    d = json.load(open(os.path.join(SAL, "barrido_%s.json" % mk), encoding="utf-8"))
-    for kw, blk in d.items():
-        for a in blk["ads"]:
-            a["kw"] = kw
-            a["mk"] = mk
-            ads.append(a)
 
-pag = {}
-for a in ads:
-    k = (a["mk"], a.get("page") or "?")
-    p = pag.setdefault(k, {"n": 0, "c7": 0, "max": 0, "dest": set(), "kw": set()})
-    p["n"] += 1
-    p["kw"].add(a["kw"])
-    if a.get("dest"):
-        p["dest"].add(a["dest"])
-    e = a.get("edad")
-    if e is not None:
-        p["max"] = max(p["max"], e)
-        if e >= 7:
-            p["c7"] += 1
+def main(argv=None):
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--mercados", nargs="*")
+    ap.add_argument("--no-guardar", action="store_true")
+    a = ap.parse_args(argv)
+    mercados = {m.upper() for m in a.mercados} if a.mercados else None
+    ads = N.cargar_barridos(mercados=mercados)
+    if not ads:
+        raise SystemExit("sin barridos en %s" % N.SAL)
+    pag = N.agrega(ads)
+    niveles = {n: sum(1 for d in pag.values() if d["nivel"] == n) for n in N.NIVELES}
+    c3 = sum(1 for d in pag.values() if d["c7"] >= N.VARA["c7"][0])
+    fin = N.cargar_json(os.path.join(N.SAL, "caza_final.json"), {}) or {}
+    ver = [v for v in fin.get("verificados", []) if not mercados or v["market"] in mercados]
+    mod = sum(1 for v in ver if v.get("veredicto") == "modelable")
+    t = N.tasas(len(pag), c3, len(ver), mod)
+    kws = sorted({x.get("kw") for x in ads if x.get("kw")})
 
-c3 = [k for k, v in pag.items() if v["c7"] >= 3]
-c8 = [k for k, v in pag.items() if v["c7"] >= 8]
+    print("CAZA · %s" % ", ".join(sorted({d["market"] for d in pag.values()})))
+    print("  keywords......................... %d" % len(kws))
+    print("  anuncios leídos.................. %d" % len(ads))
+    print("  anunciantes distintos............ %d" % len(pag))
+    for n in N.NIVELES[1:]:
+        print("  nivel %-12s................ %d" % (n, niveles[n]))
+    print("  verificados abriendo landing..... %d  ·  modelables: %d" % (len(ver), mod))
+    print("  TASA DE SEÑAL.................... %.2f %%" % t["tasa_senal"])
+    print("  TASA DE MODELO................... %.1f %%" % t["tasa_modelo"])
 
-print("CAZA POR OFICIOS · ES + IT")
-print("  keywords......................... 6")
-print("  anuncios leídos................... %d" % len(ads))
-print("  anunciantes distintos............. %d" % len(pag))
-print("  pasan cohorte 7+ >= 3............. %d  (%.1f %%)" % (len(c3), 100.0 * len(c3) / len(pag)))
-print("  pasan cohorte 7+ >= 8............. %d  (%.1f %%)" % (len(c8), 100.0 * len(c8) / len(pag)))
-print("  verificados abriendo landing...... 5  ·  modelables: 2")
-print("  tasa de modelo.................... %.1f %% de los que pasan cohorte"
-      % (100.0 * 2 / len(c3)))
+    # rendimiento por keyword: qué keywords traen señal (para podar el banco)
+    por_kw = {}
+    for d in pag.values():
+        for k in d["kw"]:
+            s = por_kw.setdefault(k, [0, 0])
+            s[0] += 1
+            s[1] += d["c7"] >= N.VARA["c7"][0]
+    print("\nkeywords por señal (anunciantes con cohorte / anunciantes):")
+    for k, (n, c) in sorted(por_kw.items(), key=lambda x: (-x[1][1], -x[1][0]))[:20]:
+        print("  %-30s %3d/%-3d %s" % (k[:30], c, n, "← podar" if n >= 10 and c == 0 else ""))
 
-print("\ncandidatos con cohorte >= 8:")
-for mk, page in sorted(c8, key=lambda k: -pag[k]["c7"]):
-    v = pag[(mk, page)]
-    print("  %-3s %-32s c7=%-3d tot=%-3d max=%-4dd %s"
-          % (mk, page[:32], v["c7"], v["n"], v["max"], list(v["dest"])[:1]))
+    f = os.path.join(N.SAL, "tasas.csv")
+    previa = None
+    if os.path.exists(f):
+        with open(f, encoding="utf-8") as fh:
+            filas = list(csv.DictReader(fh))
+            previa = filas[-1] if filas else None
+    if previa:
+        ms = t["tasa_senal"] > float(previa["tasa_senal"])
+        mm = t["tasa_modelo"] > float(previa["tasa_modelo"])
+        print("\nvs caza anterior (%s): señal %s %s · modelo %s %s → %s"
+              % (previa["fecha"], previa["tasa_senal"], "↑" if ms else "=/↓",
+                 previa["tasa_modelo"], "↑" if mm else "=/↓",
+                 "el cambio de método SIRVIÓ" if ms or mm else "el cambio de método NO sirvió"))
+    if not a.no_guardar:
+        nuevo = not os.path.exists(f)
+        with open(f, "a", newline="", encoding="utf-8") as fh:
+            w = csv.writer(fh)
+            if nuevo:
+                w.writerow(["fecha", "mercados", "anuncios", "anunciantes", "cohorte", "verificados",
+                            "modelables", "tasa_senal", "tasa_modelo"])
+            w.writerow([dt.date.today().isoformat(), " ".join(sorted({d["market"] for d in pag.values()})),
+                        len(ads), len(pag), c3, len(ver), mod, t["tasa_senal"], t["tasa_modelo"]])
 
+
+if __name__ == "__main__":
+    main()

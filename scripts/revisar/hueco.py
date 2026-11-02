@@ -1,38 +1,44 @@
-﻿# -*- coding: utf-8 -*-
-"""Hueco de arbitraje: quien compite en el mercado destino y con que antiguedad."""
-import json
-import os
-import sys
+# -*- coding: utf-8 -*-
+"""Hueco de arbitraje: quién compite ya en un mercado destino para una keyword.
 
-sys.stdout.reconfigure(encoding="utf-8")
-BASE = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+Uso:  python scripts/revisar/hueco.py ES MX --kw "planner tdah"
+      python scripts/revisar/hueco.py MX                    # todas las keywords del barrido
 
-for mk in ("ES", "MX"):
-    f = os.path.join(BASE, "salidas", "barrido_%s.json" % mk)
-    if not os.path.exists(f):
-        print("falta", f)
-        continue
-    data = json.load(open(f, encoding="utf-8"))
-    pages = {}
-    n = 0
-    for kw, blk in data.items():
-        for a in blk["ads"]:
-            n += 1
-            k = a.get("page") or "?"
-            d = pages.setdefault(k, {"tot": 0, "c7": 0, "ages": [], "dest": {}, "copy": []})
-            d["tot"] += 1
-            e = a.get("edad")
-            if e is not None and e >= 7:
-                d["c7"] += 1
-                d["ages"].append(e)
-            if a.get("dest"):
-                d["dest"][a["dest"]] = d["dest"].get(a["dest"], 0) + 1
-            if a.get("copy"):
-                d["copy"].append(a["copy"][:80])
-    print("\n=== %s: %d anuncios, %d anunciantes con anuncios en 'planner/agenda tdah'" % (mk, n, len(pages)))
-    for k, d in sorted(pages.items(), key=lambda x: -x[1]["c7"])[:10]:
-        dest = max(d["dest"].items(), key=lambda x: x[1])[0] if d["dest"] else "-"
-        print("  %-30s tot=%-3d c7+=%-3d max=%-4s %-26s | %s"
-              % (str(k)[:30], d["tot"], d["c7"], max(d["ages"]) if d["ages"] else "-",
-                 dest[:26], (d["copy"][0] if d["copy"] else "")[:60]))
+Lee los barridos del mercado. Vara: 0-3 competidores con cohorte = hueco; 50+ ads de
+uno solo = whale, no entrar.
+"""
+import argparse
 
+from _comun import N
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("mercados", nargs="+")
+    ap.add_argument("--kw", help="filtra anuncios cuya keyword o copy contenga este texto")
+    a = ap.parse_args(argv)
+    for mk in (m.upper() for m in a.mercados):
+        ads = N.cargar_barridos(mercados={mk})
+        if a.kw:
+            q = a.kw.lower()
+            ads = [x for x in ads if q in (x.get("kw") or "").lower() or q in (x.get("copy") or "").lower()]
+        if not ads:
+            print("\n=== %s: sin anuncios%s" % (mk, " para '%s'" % a.kw if a.kw else ""))
+            continue
+        pag = N.agrega(ads)
+        comp = [d for d in pag.values() if d["c7"] >= N.VARA["c7"][0]]
+        whale = [d for d in pag.values() if d["n"] >= N.WHALE]
+        veredicto = ("WHALE: nicho con dueño" if whale else
+                     "HUECO: 0-1 competidores con cohorte" if len(comp) <= 1 else
+                     "entrable: 2-3 competidores" if len(comp) <= 3 else
+                     "saturado: %d competidores con cohorte" % len(comp))
+        print("\n=== %s: %d anuncios, %d anunciantes, %d con cohorte → %s"
+              % (mk, len(ads), len(pag), len(comp), veredicto))
+        for d in sorted(pag.values(), key=lambda x: -x["c7"])[:10]:
+            print("  %-30s tot=%-3d c7+=%-3d max=%-4s %-26s | %s"
+                  % (d["page"][:30], d["n"], d["c7"], d["max"] or "-", (d["dest_principal"] or "-")[:26],
+                     (d["copies"] or [""])[0][:60]))
+
+
+if __name__ == "__main__":
+    main()

@@ -1,97 +1,58 @@
 # -*- coding: utf-8 -*-
-"""Caza exhaustiva por oficios, secuencial y con guardado incremental.
+"""Caza exhaustiva por oficios: varios mercados seguidos, un solo navegador.
 
-Uso: python caza_exhaustiva.py ES IT
+Uso:  python scripts/caza_exhaustiva.py ES IT       (por defecto ES IT)
+      python scripts/caza_exhaustiva.py BR --rondas 5
+
+Guarda salidas/exhaustiva_<PAIS>.json tras cada keyword y reanuda si se relanza.
+Las keywords siguen la regla 70 % oficio / 20 % formato / 10 % plataforma.
 """
-import datetime as dt
-import json
+import argparse
 import os
-import re
 import sys
-import time
-from urllib.parse import quote_plus
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from barrido import CARD_JS, parse_card  # noqa: E402
-
-from playwright.sync_api import sync_playwright  # noqa: E402
-
-sys.stdout.reconfigure(encoding="utf-8")
-BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SAL = os.path.join(BASE, "salidas")
-UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+import nucleo as N  # noqa: E402
 
 KEYWORDS = {
-    "ES": ["logopedia", "terapia ocupacional", "fisioterapia ejercicios", "nutricionista planillas",
+    "ES": ["logopedia", "terapia ocupacional", "fisioterapia ejercicios", "nutricionista plantillas",
            "manualidades patrones", "costura moldes", "profesores de música",
            "educación especial pictogramas", "wedding planner", "contadores plantillas",
-           "oposiciones temario", "profesores de yoga"],
+           "oposiciones temario", "profesores de yoga",
+           "fichas imprimibles", "cuadernillo actividades", "hotmart"],
     "IT": ["logopedia", "schede didattiche", "terapia occupazionale", "nutrizionista schede",
            "modelli cucito", "schemi cuoio", "maestri di musica", "autismo schede",
-           "wedding planner", "commercialisti modelli", "preparazione concorsi", "yoga sequenze"],
+           "wedding planner", "commercialisti modelli", "preparazione concorsi", "yoga sequenze",
+           "schede stampabili", "quaderno attività", "payhip"],
     "BR": ["fonoaudiologia", "terapia ocupacional", "nutrição planilhas", "moldes costura",
-           "gráficos crochê", "atividades professoras", "planilhas casamento", "apostilas concurso"],
+           "gráficos crochê", "atividades professoras", "planilhas casamento", "apostilas concurso",
+           "caderno de atividades", "kiwify"],
     "MX": ["logopedia", "terapia ocupacional", "nutriólogos planillas", "manualidades moldes",
-           "profesores material didáctico", "contadores plantillas", "wedding planner"],
+           "profesores material didáctico", "contadores plantillas", "wedding planner",
+           "fichas imprimibles", "hotmart"],
 }
 
-ROUNDS = 4
 
-
-def run_market(pg, mk):
-    kws = KEYWORDS[mk]
-    out = {}
-    hoy = dt.date.today()
-    for kw in kws:
-        t0 = time.time()
-        seen = {}
-        total = None
+def main(argv=None):
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("mercados", nargs="*", default=["ES", "IT"])
+    ap.add_argument("--rondas", type=int, default=4)
+    ap.add_argument("--ver", action="store_true")
+    a = ap.parse_args(argv)
+    mercados = [m.upper() for m in a.mercados]
+    desconocidos = [m for m in mercados if m not in KEYWORDS]
+    if desconocidos:
+        ap.error("sin banco para %s (hay: %s). Usa barrido.py con tus keywords."
+                 % (", ".join(desconocidos), ", ".join(KEYWORDS)))
+    with N.playwright() as p:
+        b, _, pg = N.abrir_navegador(p, headless=not a.ver)
         try:
-            pg.goto("https://www.facebook.com/ads/library/?active_status=active&ad_type=all"
-                    "&country=%s&q=%s&search_type=keyword_unordered&media_type=all"
-                    % (mk, quote_plus(kw)), wait_until="domcontentloaded", timeout=40000)
-            pg.wait_for_timeout(4500)
-            for _ in range(ROUNDS):
-                for t in pg.evaluate(CARD_JS):
-                    a = parse_card(t)
-                    if a and a["id"] not in seen:
-                        seen[a["id"]] = a
-                if total is None:
-                    m = re.search(r'"search_results_connection":\{"count":(\d+)', pg.content())
-                    if m:
-                        total = int(m.group(1))
-                pg.evaluate("() => window.scrollTo(0, document.body.scrollHeight)")
-                pg.wait_for_timeout(1900)
-            for t in pg.evaluate(CARD_JS):
-                a = parse_card(t)
-                if a and a["id"] not in seen:
-                    seen[a["id"]] = a
-        except Exception as e:  # noqa: BLE001
-            print("  ! fallo %-24s %s" % (kw, repr(e)[:70]))
-        for a in seen.values():
-            a["edad"] = (hoy - a["fecha"]).days if a["fecha"] else None
-            a["kw"] = kw
-        out[kw] = {"total_library": total, "ads": list(seen.values())}
-        # guardado incremental por keyword
-        f = os.path.join(SAL, "exhaustiva_%s.json" % mk)
-        json.dump(out, open(f, "w", encoding="utf-8"), ensure_ascii=False, indent=1, default=str)
-        print("  [%s] %-26s ads=%-4d library=%-7s %.0fs"
-              % (mk, kw[:26], len(seen), total, time.time() - t0))
-    return out
-
-
-def main():
-    markets = [m.upper() for m in sys.argv[1:]] or ["ES", "IT"]
-    with sync_playwright() as p:
-        b = p.chromium.launch(headless=True, args=["--no-sandbox"])
-        ctx = b.new_context(locale="es-ES", viewport={"width": 1400, "height": 1000}, user_agent=UA)
-        pg = ctx.new_page()
-        for mk in markets:
-            print("== %s (%d keywords)" % (mk, len(KEYWORDS[mk])))
-            run_market(pg, mk)
-        b.close()
-    print("== FIN")
+            for mk in mercados:
+                print("== %s (%d keywords)" % (mk, len(KEYWORDS[mk])))
+                N.barrer(pg, mk, KEYWORDS[mk], a.rondas, os.path.join(N.SAL, "exhaustiva_%s.json" % mk))
+        finally:
+            b.close()
+    print("== FIN. Siguiente: python scripts/caza_final.py")
 
 
 if __name__ == "__main__":

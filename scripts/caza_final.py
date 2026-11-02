@@ -1,151 +1,156 @@
 # -*- coding: utf-8 -*-
-"""Caza final: une todos los barridos por oficio, rankea y verifica embudos."""
-import glob
-import json
+"""Caza final: une todos los barridos, aplica la vara, abre las landings y decide.
+
+Uso:
+  python scripts/caza_final.py                 # todos los mercados, verifica el top 10
+  python scripts/caza_final.py --top 15 --mercados ES IT
+  python scripts/caza_final.py --sin-verificar # solo ranking, sin navegador
+
+Lee salidas/barrido_*.json y salidas/exhaustiva_*.json.
+Escribe salidas/caza_final.json, salidas/caza_final.md (informe) y añade al
+salidas/historico.csv una línea por candidato verificado con su motivo.
+"""
+import argparse
+import datetime as dt
 import os
-import re
 import sys
 
-from playwright.sync_api import sync_playwright
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import nucleo as N  # noqa: E402
 
-sys.stdout.reconfigure(encoding="utf-8")
-BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SAL = os.path.join(BASE, "salidas")
-UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
-
-RETAIL = ("amazon", "shein", "shopee", "mercadolivre", "aliexpress", "mercadolibre", "temu",
-          "ebay", "walmart", "target", "etsy", "ikea", "leroy", "carrefour", "americanas",
-          "play.google", "apps.apple", "itunes", "tiktok", "instagram", "facebook.com",
-          "whatsapp", "adobe", "canva", "spagna", "confprofessioni")
-
-MIN_C7, TOP = 5, 10
+ICONO = {"modelable": "✅", "dudoso": "⚠️", "descartado": "❌"}
 
 
-def fuentes():
-    for f in glob.glob(os.path.join(SAL, "exhaustiva_*.json")) + \
-             [os.path.join(SAL, "barrido_ES.json"), os.path.join(SAL, "barrido_IT.json")]:
-        if os.path.exists(f):
-            yield os.path.basename(f), json.load(open(f, encoding="utf-8"))
-
-
-def agrega():
-    ads, pag = {}, {}
-    for nombre, data in fuentes():
-        mk = nombre.split("_")[1].split(".")[0]
-        for kw, blk in data.items():
-            for a in blk.get("ads", []):
-                if a.get("id") in ads:
-                    continue
-                ads[a.get("id")] = 1
-                k = (mk, a.get("page") or "?")
-                d = pag.setdefault(k, {"n": 0, "c7": 0, "ages": [], "dest": {}, "dup": 0,
-                                       "copy": [], "kw": set()})
-                d["n"] += 1
-                d["kw"].add(kw)
-                e = a.get("edad")
-                if e is not None and e >= 7:
-                    d["c7"] += 1
-                    d["ages"].append(e)
-                if a.get("dup"):
-                    d["dup"] += 1
-                if a.get("dest"):
-                    d["dest"][a["dest"]] = d["dest"].get(a["dest"], 0) + 1
-                if a.get("copy"):
-                    d["copy"].append(a["copy"])
-    return ads, pag
-
-
-def clases(pg, url):
-    d = {"url": url}
-    ctx = pg.context.browser.new_context(locale="es-ES", viewport={"width": 1280, "height": 900},
-                                         user_agent=UA)
-    p2 = ctx.new_page()
-    ok = False
-    for u in (url, url.replace("https://www.", "https://"), url.replace("https://", "https://www.")):
-        try:
-            r = p2.goto(u, wait_until="domcontentloaded", timeout=25000)
-            ok = True
-            break
-        except Exception:
+def candidatos(pag, min_nivel="mirar"):
+    umbral = N.NIVELES.index(min_nivel)
+    out, descartes = [], {}
+    for d in pag.values():
+        if N.NIVELES.index(d["nivel"]) < umbral:
             continue
-    try:
-        if not ok:
-            raise RuntimeError("no resuelve")
-        p2.wait_for_timeout(3000)
-        txt = re.sub(r"\s+", " ", p2.inner_text("body"))
-        d["title"] = p2.title()[:70]
-        d["precios"] = re.findall(r"(?:R\$|€|\$|US\$)\s?\d{1,3}(?:[.,]\d{2})?", txt)[:3]
-        d["descarga"] = bool(re.search(r"(descarg|inmediat|download|immediat)", txt, re.I))
-        d["checkout"] = bool(re.search(r"(comprar|acquista|buy now|add to cart|checkout|carrito|"
-                                       r"iscriviti|inscr[ií]bete|pagar|precio)", txt, re.I))
-        d["curso"] = bool(re.search(r"(curso|videolez|lezioni|lecciones|moduli|m[oó]dulos|classi|"
-                                    r"talleres|workshop)", txt, re.I))
-        d["pdf"] = bool(re.search(r"\bpdf\b|imprimible|stampabil|printable|fichas|schede", txt, re.I))
-        d["muestra"] = txt[:130]
-    except Exception as e:  # noqa: BLE001
-        d["error"] = repr(e)[:80]
-    try:
-        ctx.close()
-    except Exception:
-        pass
-    return d
-
-
-def main():
-    ads, pag = agrega()
-    print("anuncios únicos: %d | anunciantes: %d" % (len(ads), len(pag)))
-
-    cands = []
-    for (mk, page), d in pag.items():
-        dest = max(d["dest"].items(), key=lambda x: x[1])[0] if d["dest"] else ""
-        if d["c7"] < MIN_C7 or not dest or any(r in dest for r in RETAIL):
+        if d["tipo_destino"] in N.DESCARTE_DESTINO:
+            m = N.DESCARTE_DESTINO[d["tipo_destino"]]
+            descartes[m] = descartes.get(m, 0) + 1
             continue
-        cands.append({"market": mk, "page": page, "c7": d["c7"], "n": d["n"],
-                      "max": max(d["ages"]) if d["ages"] else 0, "dup": d["dup"], "dest": dest,
-                      "copy": d["copy"][0][:70] if d["copy"] else "", "kw": sorted(d["kw"])[:2]})
-    cands.sort(key=lambda x: (-x["c7"], -x["max"]))
-    tot_c3 = sum(1 for (mk, p), d in pag.items() if d["c7"] >= 3)
+        out.append(d)
+    out.sort(key=lambda d: (-d["score"], -d["c7"]))
+    return out, descartes
 
-    print("\n%-3s %-28s %4s %4s %5s %3s %-30s %s"
-          % ("MK", "ANUNCIANTE", "C7+", "TOT", "MAXd", "DUP", "DESTINO", "COPY"))
-    print("-" * 140)
+
+def whales(pag):
+    """Anunciante con 50+ anuncios en un mercado: nicho con dueño (vara §3)."""
+    return sorted((d for d in pag.values() if d["n"] >= N.WHALE), key=lambda d: -d["n"])
+
+
+def informe_md(res):
+    t, L = res["tasas"], []
+    L.append("# Caza final — %s\n" % res["fecha"])
+    L.append("- Anuncios únicos: **%d** · anunciantes: **%d** · mercados: %s"
+             % (res["anuncios"], res["anunciantes"], ", ".join(res["mercados"])))
+    L.append("- Con cohorte ≥ 3: **%d** · candidatos tras descartes de destino: **%d**"
+             % (res["con_cohorte"], len(res["candidatos"])))
+    L.append("- Verificados: **%d** · modelables: **%d**" % (len(res["verificados"]), res["modelables"]))
+    L.append("- **Tasa de señal %.2f %% · tasa de modelo %.1f %%**\n" % (t["tasa_senal"], t["tasa_modelo"]))
+    if res["verificados"]:
+        L.append("## Verificados\n")
+        L.append("| | Mk | Anunciante | Nivel | C7+ | Máx días | Destino | Precio | Motivo |")
+        L.append("|---|---|---|---|---|---|---|---|---|")
+        for v in res["verificados"]:
+            L.append("| %s | %s | %s | %s | %d | %d | %s | %s | %s |"
+                     % (ICONO.get(v["veredicto"], ""), v["market"], v["page"].replace("|", "/"),
+                        v["nivel"], v["c7"], v["max"], v["dest"], v.get("precio", ""), v["motivo"]))
+    L.append("\n## Top candidatos\n")
+    L.append("| Mk | Anunciante | Nivel | C7+ | Total | Máx días | Dup | Destino | Score |")
+    L.append("|---|---|---|---|---|---|---|---|---|")
+    for c in res["candidatos"][:25]:
+        L.append("| %s | %s | %s | %d | %d | %d | %d | %s | %.0f |"
+                 % (c["market"], c["page"].replace("|", "/"), c["nivel"], c["c7"], c["n"], c["max"],
+                    c["dup"], c["dest_principal"], c["score"]))
+    if res["descartes_destino"]:
+        L.append("\n## Descartados por destino (sin abrir)\n")
+        for m, n in sorted(res["descartes_destino"].items(), key=lambda x: -x[1]):
+            L.append("- %s: %d" % (m, n))
+    if res["whales"]:
+        L.append("\n## Whales (50+ anuncios: nicho con dueño)\n")
+        for w in res["whales"][:10]:
+            L.append("- [%s] %s — %d anuncios, %d en cohorte" % (w["market"], w["page"], w["n"], w["c7"]))
+    L.append("\nSiguiente paso para cada ✅: `python scripts/profundizar.py <PAIS> \"<anunciante>\" --dest <dominio>`")
+    return "\n".join(L) + "\n"
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--top", type=int, default=10, help="cuántas landings abrir")
+    ap.add_argument("--mercados", nargs="*", help="filtrar mercados (ES IT ...)")
+    ap.add_argument("--min-nivel", default="mirar", choices=N.NIVELES[1:])
+    ap.add_argument("--sin-verificar", action="store_true", help="no abrir navegador")
+    ap.add_argument("--no-historico", action="store_true", help="no añadir al historico.csv")
+    a = ap.parse_args(argv)
+
+    mercados = {m.upper() for m in a.mercados} if a.mercados else None
+    ads = N.cargar_barridos(mercados=mercados)
+    if not ads:
+        sys.exit("No hay barridos en %s. Primero: python scripts/barrido.py ES \"kw1|kw2\" 4" % N.SAL)
+    pag = N.agrega(ads)
+    con_cohorte = sum(1 for d in pag.values() if d["c7"] >= N.VARA["c7"][0])
+    cands, descartes = candidatos(pag, a.min_nivel)
+    print("anuncios únicos: %d | anunciantes: %d | con cohorte>=%d: %d | candidatos: %d"
+          % (len(ads), len(pag), N.VARA["c7"][0], con_cohorte, len(cands)))
+
+    print("\n%-3s %-28s %-11s %4s %4s %5s %3s %-28s %5s" %
+          ("MK", "ANUNCIANTE", "NIVEL", "C7+", "TOT", "MAXd", "DUP", "DESTINO", "SCORE"))
+    print("-" * 104)
     for c in cands[:24]:
-        print("%-3s %-28s %4d %4d %5d %3d %-30s %s"
-              % (c["market"], c["page"][:28], c["c7"], c["n"], c["max"], c["dup"],
-                 c["dest"][:30], c["copy"]))
-    print("\ncon cohorte>=3: %d de %d (%.1f %%) | con destino y cohorte>=%d: %d"
-          % (tot_c3, len(pag), 100.0 * tot_c3 / len(pag), MIN_C7, len(cands)))
+        print("%-3s %-28s %-11s %4d %4d %5d %3d %-28s %5.0f"
+              % (c["market"], c["page"][:28], c["nivel"], c["c7"], c["n"], c["max"], c["dup"],
+                 c["dest_principal"][:28], c["score"]))
 
     verif = []
-    with sync_playwright() as p:
-        b = p.chromium.launch(headless=True, args=["--no-sandbox"])
-        pg = b.new_page()
-        for c in cands[:TOP]:
-            url = c["dest"] if c["dest"].startswith("http") else "https://" + c["dest"]
-            d = clases(pg, url)
-            d.update({k: c[k] for k in ("page", "market", "c7", "max", "dup", "copy")})
-            verif.append(d)
-            if "error" in d:
-                print("\n### %-26s [%s] c7=%d  ERROR: %s" % (c["page"][:26], c["market"], c["c7"], d["error"]))
-            else:
-                tipo = ("INFOPRODUCTO" if (d["descarga"] or d["pdf"]) and d["checkout"]
-                        else "formación" if d["curso"] else "sin oferta clara")
-                print("\n### %-26s [%s] c7=%d max=%dd dup=%d  → %s"
-                      % (c["page"][:26], c["market"], c["c7"], c["max"], c["dup"], tipo))
-                print("    %s | precios=%s" % (d.get("title", "")[:64], d["precios"]))
-                print("    >", d["muestra"][:120])
-        b.close()
+    if not a.sin_verificar and cands:
+        print("\nverificando %d landings (contexto aislado por sitio)..." % min(a.top, len(cands)))
+        with N.playwright() as p:
+            b = N.lanzar(p)
+            try:
+                for c in cands[:a.top]:
+                    dest = c["dest_principal"]
+                    url = dest if dest.startswith("http") else "https://" + dest
+                    d = N.abrir_landing(b, url)
+                    v = {"fecha": dt.date.today().isoformat(), "market": c["market"], "page": c["page"],
+                         "nicho": ", ".join(c["kw"][:2]), "c7": c["c7"], "n": c["n"], "max": c["max"],
+                         "dup": c["dup"], "nivel": c["nivel"], "dest": dest,
+                         "precio": " / ".join(d.get("precios") or [])[:40],
+                         "tipo": d.get("tipo"), "veredicto": d.get("veredicto"), "motivo": d.get("motivo"),
+                         "title": d.get("title", ""), "plataforma": d.get("plataforma"),
+                         "muestra": d.get("muestra", ""), "copy": (c["copies"] or [""])[0][:90]}
+                    verif.append(v)
+                    print("\n%s %-26s [%s] %s c7=%d max=%dd → %s (%s)"
+                          % (ICONO.get(v["veredicto"], "?"), c["page"][:26], c["market"], c["nivel"],
+                             c["c7"], c["max"], v["tipo"], v["motivo"]))
+                    if v["title"] or v["precio"]:
+                        print("    %s | precios: %s" % (v["title"][:60], v["precio"] or "-"))
+            finally:
+                b.close()
 
-    ok = [d for d in verif if "error" not in d]
-    info = [d for d in ok if (d["descarga"] or d["pdf"]) and d["checkout"]]
-    print("\nVERIFICADOS %d/%d | infoproducto claro: %d | tasa de modelo: %.0f %% de los verificados"
-          % (len(ok), len(verif), len(info), 100.0 * len(info) / max(len(verif), 1)))
+    modelables = sum(1 for v in verif if v["veredicto"] == "modelable")
+    t = N.tasas(len(pag), con_cohorte, len(verif), modelables)
+    res = {"fecha": dt.date.today().isoformat(), "anuncios": len(ads), "anunciantes": len(pag),
+           "mercados": sorted({d["market"] for d in pag.values()}), "con_cohorte": con_cohorte,
+           "modelables": modelables, "tasas": t, "descartes_destino": descartes,
+           "whales": [{k: w[k] for k in ("market", "page", "n", "c7")} for w in whales(pag)],
+           "candidatos": [{k: c[k] for k in ("market", "page", "nivel", "score", "c7", "n", "max", "dup",
+                                              "dest_principal", "tipo_destino", "kw", "copies")}
+                          for c in cands],
+           "verificados": verif}
 
-    json.dump({"candidatos": cands, "verificados": verif},
-              open(os.path.join(SAL, "caza_final.json"), "w", encoding="utf-8"),
-              ensure_ascii=False, indent=1)
-    print("guardado: salidas/caza_final.json")
+    N.guardar_json(os.path.join(N.SAL, "caza_final.json"), res)
+    with open(os.path.join(N.SAL, "caza_final.md"), "w", encoding="utf-8") as fh:
+        fh.write(informe_md(res))
+    if verif and not a.no_historico:
+        N.registrar(verif)
+
+    print("\nTASA DE SEÑAL %.2f %% (%d/%d) · TASA DE MODELO %.1f %% (%d/%d verificados)"
+          % (t["tasa_senal"], con_cohorte, len(pag), t["tasa_modelo"], modelables, len(verif)))
+    print("guardado: salidas/caza_final.json · salidas/caza_final.md%s"
+          % (" · salidas/historico.csv" if verif and not a.no_historico else ""))
 
 
 if __name__ == "__main__":

@@ -1,47 +1,48 @@
-﻿# -*- coding: utf-8 -*-
-"""Lista los candidatos del ranking que no salieron en el informe, ordenados por señal."""
-import json
+# -*- coding: utf-8 -*-
+"""Candidatos del ranking que aún NO se han revisado (no están en historico.csv).
+
+Uso:  python scripts/revisar/otros.py [--min-c7 5] [--longevos 180]
+"""
+import argparse
+import csv
 import os
-import sys
 
-sys.stdout.reconfigure(encoding="utf-8")
-BASE = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-data = json.load(open(os.path.join(BASE, "salidas", "ranking.json"), encoding="utf-8"))
+from _comun import N
 
-YA_VISTOS = {
-    "Planner Sem Caos TDAH", "Crocheteca", "Avelune Crochet Patterns", "edu.sogno",
-    "Mindfulness Educators Italia", "LacariaRicami.Store", "Gold City Ventures", "Jessa",
-    "Shelby Sapp", "Victor Pareto", "felipetitto con Meu Assessor",
-}
 
-MIN_C7 = 5
-rows = []
-for d in data:
-    if d["page"] in YA_VISTOS:
-        continue
-    if d["c7"] < MIN_C7:
-        continue
-    if d["digital"] < d["retail"]:
-        continue
-    rows.append(d)
+def ya_vistos():
+    f = os.path.join(N.SAL, "historico.csv")
+    if not os.path.exists(f):
+        return set()
+    with open(f, encoding="utf-8") as fh:
+        return {(r["market"], r["page"]) for r in csv.DictReader(fh)}
 
-rows.sort(key=lambda d: (-d["score"], -d["c7"]))
 
-print("%-3s %-3s %-30s %5s %5s %5s %-28s %s" % ("#", "MK", "ANUNCIANTE", "C7+", "TOT", "MAXd", "DESTINO", "COPY"))
-print("-" * 132)
-for i, d in enumerate(rows[:32], 1):
-    copy = (d["copies"][0][:58] if d["copies"] else "")
-    print("%-3d %-3s %-30s %5d %5d %5d %-28s %s"
-          % (i, d["market"], str(d["page"])[:30], d["c7"], d["total"], d["max_age"],
-             (d["dest_principal"] or "-")[:28], copy))
+def main(argv=None):
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--min-c7", type=int, default=5)
+    ap.add_argument("--longevos", type=int, default=180, help="días para la lista de longevos")
+    a = ap.parse_args(argv)
+    data = N.cargar_json(os.path.join(N.SAL, "ranking.json"))
+    if data is None:
+        raise SystemExit("falta salidas/ranking.json: python scripts/revisar/rankear.py")
+    vistos = ya_vistos()
+    rows = [d for d in data if (d["market"], d["page"]) not in vistos and d["c7"] >= a.min_c7
+            and d["tipo_destino"] not in N.DESCARTE_DESTINO]
+    print("%-3s %-3s %-30s %-11s %5s %5s %5s %-28s %s"
+          % ("#", "MK", "ANUNCIANTE", "NIVEL", "C7+", "TOT", "MAXd", "DESTINO", "COPY"))
+    print("-" * 132)
+    for i, d in enumerate(rows[:32], 1):
+        print("%-3d %-3s %-30s %-11s %5d %5d %5d %-28s %s"
+              % (i, d["market"], d["page"][:30], d["nivel"], d["c7"], d["n"], d["max"],
+                 (d["dest_principal"] or "-")[:28], (d["copies"] or [""])[0][:50]))
+    print("\nsin revisar con cohorte >= %d: %d (ya en histórico: %d)" % (a.min_c7, len(rows), len(vistos)))
+    viejos = sorted((d for d in rows if d["max"] >= a.longevos), key=lambda x: -x["max"])
+    print("\nLONGEVOS (>= %d días corriendo): %d" % (a.longevos, len(viejos)))
+    for d in viejos[:14]:
+        print("  %-30s %s  c7=%-3d max=%-5d %s" % (d["page"][:30], d["market"], d["c7"], d["max"],
+                                                  (d["dest_principal"] or "-")[:30]))
 
-print("\ntotal con señal digital y cohorte >= %d: %d" % (MIN_C7, len(rows)))
 
-# longevos: la señal más dura
-viejos = [d for d in rows if d["max_age"] >= 180]
-print("\nLONGEVOS (>= 180 días corriendo):", len(viejos))
-for d in sorted(viejos, key=lambda x: -x["max_age"])[:14]:
-    print("  %-30s %s  c7=%-3d max=%-5d %-26s %s"
-          % (str(d["page"])[:30], d["market"], d["c7"], d["max_age"],
-             (d["dest_principal"] or "-")[:26], (d["copies"][0][:50] if d["copies"] else "")))
-
+if __name__ == "__main__":
+    main()

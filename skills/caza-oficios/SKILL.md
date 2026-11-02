@@ -37,19 +37,32 @@ Umbrales: cohorte 7+ ≥ 3 para mirar, ≥ 8 para profundizar, ≥ 20 para ganad
 
 ## Pipeline
 
+Los scripts viven en el repositorio del kit (`scripts/`). Ejecutar desde la raíz del kit.
+
 ```bash
-# 1. barrido (secuencial, un navegador)
+# 0. calibración: una keyword donde ya sabes que hay ganador conocido
+python scripts/cazar_lib.py ES "logopedia"
+
+# 1. barrido (secuencial, un navegador; relanzar = continuar donde se quedó)
 python scripts/barrido.py ES "logopedia|costura moldes|wedding planner" 4
-python scripts/barrido.py IT "logopedia|schede didattiche|modelli cucito" 4
+python scripts/barrido.py IT --banco            # keywords de oficio ya preparadas
 
-# 2. análisis + verificación de embudos en una pasada
-python scripts/caza_final.py
+# 2. vara + verificación de embudos en una pasada
+python scripts/caza_final.py --top 10
 
-# 3. tasas de la caza
-python scripts/tasa_oficio.py
+# 3. tasas de la caza y comparación con la anterior
+python scripts/revisar/tasa_oficio.py
+
+# 4. para cada ✅: arsenal en varios países y hueco de arbitraje
+python scripts/profundizar.py ES "<anunciante>" --dest <dominio> --mercados ES MX CO AR
 ```
 
-Salidas en `salidas/`: `barrido_<PAIS>.json`, `caza_final.json` (candidatos + verificados).
+Salidas en `salidas/`: `barrido_<PAIS>.json`, `caza_final.json`, `caza_final.md` (informe
+para leer y presentar al usuario), `historico.csv` (cada candidato verificado con su motivo)
+y `tasas.csv` (evolución de la puntería).
+
+Al terminar una caza, **presenta al usuario el contenido de `salidas/caza_final.md`**: los ✅
+con su precio y nivel, los ⚠️ que conviene abrir a mano y las dos tasas.
 
 ## Reglas de ejecución que cuestan caro si se ignoran
 
@@ -57,6 +70,9 @@ Salidas en `salidas/`: `barrido_<PAIS>.json`, `caza_final.json` (candidatos + ve
 2. **Matar Chrome huérfanos antes de empezar.** Un `job_kill` mata el wrapper, no el navegador hijo. Los procesos viejos se comen la CPU y el barrido «se cuelga» en la primera keyword:
    ```powershell
    Get-Process chrome | Where-Object { $_.StartTime -lt (Get-Date).AddHours(-2) } | Stop-Process -Force
+   ```
+   ```bash
+   pkill -f "chrome.*--headless"    # macOS / Linux
    ```
 3. **Clasificar abriendo la landing, no por el texto.** El copy dice «ebook» y «gratis» en todas partes. Dominio y palabras clave inventan falsos positivos (una zapatería con blog de guías) y falsos negativos (un PDF de moldes con dominio propio).
 4. **Verificar en contexto aislado.** Un fallo de DNS contamina el navegador y los siguientes `goto` fallan en cadena: un `new_context` por sitio.

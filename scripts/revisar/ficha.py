@@ -1,24 +1,40 @@
-﻿# -*- coding: utf-8 -*-
-import json
+# -*- coding: utf-8 -*-
+"""Ficha de uno o varios anunciantes del ranking.
+
+Uso:  python scripts/revisar/ficha.py "Mundo de La Costura" "Fono Aprende"
+      python scripts/revisar/ficha.py --buscar costura      # coincidencia parcial
+"""
+import argparse
 import os
-import sys
 
-sys.stdout.reconfigure(encoding="utf-8")
-BASE = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-data = json.load(open(os.path.join(BASE, "salidas", "ranking.json"), encoding="utf-8"))
+from _comun import N
 
-objetivo = ["Mia Academy", "edu.sogno", "Mindfulness Educators Italia", "Jessa", "Shelby Sapp",
-            "Aha Printables", "Gold City Ventures", "Planner Sem Caos TDAH", "Business Explained",
-            "Unione Professionisti", "Everand"]
 
-for d in data:
-    if d["page"] not in objetivo:
-        continue
-    print("\n### %s  [%s]" % (d["page"], d["market"]))
-    print("  total=%d  cohorte7+=%d  max_edad=%d  dup=%d  dest=%s"
-          % (d["total"], d["c7"], d["max_age"], d["dup"], d["dest_principal"]))
-    print("  keywords:", ", ".join(d["kws"][:6]))
-    print("  clases:", d["clases"])
-    for c in d["copies"][:3]:
-        print("   -", c[:130])
+def main(argv=None):
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("nombres", nargs="*")
+    ap.add_argument("--buscar", help="texto parcial en el nombre o el destino")
+    a = ap.parse_args(argv)
+    data = N.cargar_json(os.path.join(N.SAL, "ranking.json"))
+    if data is None:
+        raise SystemExit("falta salidas/ranking.json: python scripts/revisar/rankear.py")
+    obj = {n.lower() for n in a.nombres}
+    q = (a.buscar or "").lower()
+    hits = [d for d in data if d["page"].lower() in obj
+            or (q and (q in d["page"].lower() or q in (d.get("dest_principal") or "").lower()))]
+    if not hits:
+        raise SystemExit("ninguno encontrado en el ranking")
+    for d in hits:
+        print("\n### %s  [%s]  nivel: %s" % (d["page"], d["market"], d["nivel"]))
+        print("  total=%d  cohorte7+=%d  max_edad=%d  dup=%d  score=%.0f"
+              % (d["n"], d["c7"], d["max"], d["dup"], d["score"]))
+        print("  destino: %s (%s)" % (d["dest_principal"] or "-", d["tipo_destino"]))
+        print("  keywords:", ", ".join(d["kw"][:6]))
+        for c in d["copies"][:3]:
+            print("   -", c[:130])
+        print("  profundizar: python scripts/profundizar.py %s \"%s\"%s"
+              % (d["market"], d["page"], " --dest " + d["dest_principal"] if d["dest_principal"] else ""))
 
+
+if __name__ == "__main__":
+    main()
