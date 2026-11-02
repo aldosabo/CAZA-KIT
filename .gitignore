@@ -1,0 +1,6 @@
+﻿# Datos de trabajo
+salidas/
+__pycache__/
+*.pyc
+.playwright/
+node_modules/

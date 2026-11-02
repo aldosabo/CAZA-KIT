@@ -1,0 +1,256 @@
+{
+ "candidatos": [
+  {
+   "market": "IT",
+   "page": "FDL calzature",
+   "c7": 25,
+   "n": 25,
+   "max": 157,
+   "dup": 0,
+   "dest": "fdlcalzature.it",
+   "copy": "👀 Se cerchi una sneaker elegante e comoda davvero, guarda questa. Io s",
+   "kw": [
+    "modelli cucito"
+   ]
+  },
+  {
+   "market": "ES",
+   "page": "Mundo de La Costura",
+   "c7": 24,
+   "n": 24,
+   "max": 52,
+   "dup": 3,
+   "dest": "mundodelacostura.com",
+   "copy": "🧵 ¡Transforma tus telas favoritas en neceseres hermosos y funcionales!",
+   "kw": [
+    "costura moldes"
+   ]
+  },
+  {
+   "market": "ES",
+   "page": "Fono Aprende",
+   "c7": 13,
+   "n": 14,
+   "max": 98,
+   "dup": 0,
+   "dest": "fonoaprende.com",
+   "copy": "Fono Aprende en 21Noticias",
+   "kw": [
+    "logopedia",
+    "terapia ocupacional"
+   ]
+  },
+  {
+   "market": "ES",
+   "page": "Costura creativa",
+   "c7": 10,
+   "n": 11,
+   "max": 186,
+   "dup": 0,
+   "dest": "tusformaciones.online",
+   "copy": "Aprendé a hacer BIKINIS 👉 desde cero y con tu máquina doméstica: 👙",
+   "kw": [
+    "costura moldes"
+   ]
+  },
+  {
+   "market": "IT",
+   "page": "Therapy Toolkit",
+   "c7": 10,
+   "n": 10,
+   "max": 22,
+   "dup": 0,
+   "dest": "ptp.abatools.pro",
+   "copy": "Niente più improvvisazione nelle tue sedute con i bambini.",
+   "kw": [
+    "autismo schede"
+   ]
+  },
+  {
+   "market": "ES",
+   "page": "The Forever Planner",
+   "c7": 9,
+   "n": 9,
+   "max": 192,
+   "dup": 2,
+   "dest": "theforeverplanner.com",
+   "copy": "Plan your entire wedding in one beautiful dashboard — no chaos, no str",
+   "kw": [
+    "wedding planner"
+   ]
+  },
+  {
+   "market": "ES",
+   "page": "Anna Carbonell Vivancos con Fisioreact",
+   "c7": 6,
+   "n": 6,
+   "max": 173,
+   "dup": 2,
+   "dest": "fisioreact.com",
+   "copy": "¡Ahora es el fisio el que va a tu casa!",
+   "kw": [
+    "fisioterapia ejercicios"
+   ]
+  },
+  {
+   "market": "ES",
+   "page": "Simone Rodrigues",
+   "c7": 6,
+   "n": 6,
+   "max": 56,
+   "dup": 0,
+   "dest": "creativetareas.shop",
+   "copy": "¿Pasas demasiado tiempo buscando actividades para tus sesiones?",
+   "kw": [
+    "terapia ocupacional"
+   ]
+  }
+ ],
+ "verificados": [
+  {
+   "url": "https://fdlcalzature.it",
+   "title": "FDL Calzature - Scarpe da Uomo Artigianali e al 100% Made in Italy.",
+   "precios": [
+    "€35,00",
+    "€99,99",
+    "€64,99"
+   ],
+   "descarga": false,
+   "checkout": true,
+   "curso": true,
+   "pdf": false,
+   "muestra": "Questo sito web utilizza i cookie per garantirti la miglior esperienza possibile. Scopri di più. Rifiuta Accetta ✕ Vai direttament",
+   "page": "FDL calzature",
+   "market": "IT",
+   "c7": 25,
+   "max": 157,
+   "dup": 0,
+   "copy": "👀 Se cerchi una sneaker elegante e comoda davvero, guarda questa. Io s"
+  },
+  {
+   "url": "https://mundodelacostura.com",
+   "title": "Mundo de la Costura | 50 Bolsas de Tecido em PDF",
+   "precios": [
+    "R$ 97,00",
+    "R$ 10,00",
+    "R$ 10,00"
+   ],
+   "descarga": false,
+   "checkout": false,
+   "curso": false,
+   "pdf": true,
+   "muestra": "50 Bolsas de Tecido com Moldes Cotados e Montagem Aprenda a produzir 50 modelos de bolsas de tecido: medidas de corte, materiais n",
+   "page": "Mundo de La Costura",
+   "market": "ES",
+   "c7": 24,
+   "max": 52,
+   "dup": 3,
+   "copy": "🧵 ¡Transforma tus telas favoritas en neceseres hermosos y funcionales!"
+  },
+  {
+   "url": "https://fonoaprende.com",
+   "title": "Logopedia Online con Titulación | Fono Aprende",
+   "precios": [],
+   "descarga": false,
+   "checkout": false,
+   "curso": true,
+   "pdf": false,
+   "muestra": "Gestionar consentimiento Para ofrecer las mejores experiencias, utilizamos tecnologías como las cookies para almacenar y/o acceder",
+   "page": "Fono Aprende",
+   "market": "ES",
+   "c7": 13,
+   "max": 98,
+   "dup": 0,
+   "copy": "Fono Aprende en 21Noticias"
+  },
+  {
+   "url": "https://tusformaciones.online",
+   "title": "tusformaciones.online |",
+   "precios": [],
+   "descarga": true,
+   "checkout": true,
+   "curso": true,
+   "pdf": false,
+   "muestra": "¡SÓLO POR HOY aprovecha 50% OFF! Conviértete en la jefa de tu vida creando tu propio negocio de Lencería de autora $ Te muestro lo",
+   "page": "Costura creativa",
+   "market": "ES",
+   "c7": 10,
+   "max": 186,
+   "dup": 0,
+   "copy": "Aprendé a hacer BIKINIS 👉 desde cero y con tu máquina doméstica: 👙"
+  },
+  {
+   "url": "https://ptp.abatools.pro",
+   "title": "404: NOT_FOUND",
+   "precios": [],
+   "descarga": false,
+   "checkout": false,
+   "curso": false,
+   "pdf": false,
+   "muestra": "This page doesn’t exist It may have been moved, removed, or never existed. 404 NOT_FOUND gru1::fgzk6-1793657317586-a95c99f9ed06 VI",
+   "page": "Therapy Toolkit",
+   "market": "IT",
+   "c7": 10,
+   "max": 22,
+   "dup": 0,
+   "copy": "Niente più improvvisazione nelle tue sedute con i bambini."
+  },
+  {
+   "url": "https://theforeverplanner.com",
+   "title": "The Forever Planner - Wedding Planning Spreadsheet",
+   "precios": [
+    "$67",
+    "$100",
+    "$77"
+   ],
+   "descarga": true,
+   "checkout": true,
+   "curso": false,
+   "pdf": true,
+   "muestra": "Skip to content 🤍 OUR ANNUAL SALE IS ENDING TODAY 🤍 Cart Your entire wedding organized in one place. Instantly. 28,000+ couples us",
+   "page": "The Forever Planner",
+   "market": "ES",
+   "c7": 9,
+   "max": 192,
+   "dup": 2,
+   "copy": "Plan your entire wedding in one beautiful dashboard — no chaos, no str"
+  },
+  {
+   "url": "https://fisioreact.com",
+   "title": "FisioReact",
+   "precios": [
+    "€ 10",
+    "€ 20"
+   ],
+   "descarga": false,
+   "checkout": true,
+   "curso": true,
+   "pdf": false,
+   "muestra": "Usamos cookies para ofrecerte la mejor experiencia en nuestra web. Saber más Aceptar Rechazar Mi cuenta Servicios Especialidades E",
+   "page": "Anna Carbonell Vivancos con Fisioreact",
+   "market": "ES",
+   "c7": 6,
+   "max": 173,
+   "dup": 2,
+   "copy": "¡Ahora es el fisio el que va a tu casa!"
+  },
+  {
+   "url": "https://creativetareas.shop",
+   "title": "+1001 Actividades de Terapia Ocupacional Pediátrica | CreativeTareas.s",
+   "precios": [
+    "$17"
+   ],
+   "descarga": true,
+   "checkout": true,
+   "curso": false,
+   "pdf": true,
+   "muestra": "⚡ ACCESO INMEDIATO +1001 ACTIVIDADES DE TERAPIA OCUPACIONAL PEDIÁTRICA CON EJERCICIOS SENSORIALES Y VIDEOS DE APOYO PASO A PASO PA",
+   "page": "Simone Rodrigues",
+   "market": "ES",
+   "c7": 6,
+   "max": 56,
+   "dup": 0,
+   "copy": "¿Pasas demasiado tiempo buscando actividades para tus sesiones?"
+  }
+ ]
+}
