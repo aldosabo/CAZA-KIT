@@ -35,6 +35,9 @@ Si falla una, se descarta y se anota el motivo en una línea.
 ## 3. Qué se descarta de inmediato
 
 - **Retail físico**: herbolarios, mercerías, tiendas de lanas, papelerías. Aunque tengan 180 ads.
+- **Producto físico sin fabricante**: suplementos, cápsulas, cosmética, ropa, complementos.
+  Aunque tenga 190 anuncios en cohorte. Exigiría inventario, logística y asumir claims de salud;
+  solo se acepta con un fabricante detrás.
 - **Apps y SaaS**: Play Store, App Store, «descarga la app», plataformas.
 - **Cursos corporativos y de compliance**: formación bonificada, seguridad laboral, certificaciones oficiales.
 - **Marca personal consolidada**: nombre de persona + autoridad + escalera de valor.
@@ -46,6 +49,23 @@ Si falla una, se descarta y se anota el motivo en una línea.
 > **No se clasifica por el texto del anuncio. Se clasifica abriendo la landing.**
 
 El copy dice «gratis», «ebook», «guía» en todas partes. Lo que distingue un infoproducto de una tienda es el checkout: precio, entrega inmediata y producto descargable. Clasificar por dominio o por palabras clave inventa falsos positivos (una mercería con un blog de «guías») y falsos negativos (un producto de oficio en dominio propio).
+
+## 4 bis. El podio siempre lo ocupa el retail
+
+Dos veces, en dos cazas distintas, el anunciante con más cohorte ha sido un comercio físico:
+
+| Caso | Cohorte | Días | Qué vendía |
+|---|---|---|---|
+| LacariaRicami | 179/187 | 44 | lanas, agujas y mercería |
+| Luvain | **190/208** | 65 | astaxantina en cápsulas |
+
+No es casualidad: quien vende producto físico **quema cientos de creatividades** porque su margen lo
+permite, y la cohorte mide creatividades, no rentabilidad. Consecuencia práctica: **nunca se decide
+con el primer puesto de la lista**; antes se mira qué vende.
+
+Y un detalle que engaña: estas tiendas suelen **esconder el precio tras el carrito**, así que sin
+precio visible parecen un embudo digital. Por eso el descarte tiene que ser por señales de producto
+(`capsule`, `softgel`, `integrativo`, `mg`, `talla`) y no por precio.
 
 ## 5. Cómo se mide la puntería
 

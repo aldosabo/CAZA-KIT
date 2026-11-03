@@ -341,7 +341,9 @@ def score(d):
 # ---------------------------------------------------------------- landing
 RE_CHECKOUT = re.compile(r"(comprar|compra ahora|adquirir|acquista|buy now|add to cart|checkout|"
                          r"carrito|añadir al carrito|pagar|finalizar compra|quiero (?:el|mi|acceso)|"
-                         r"get instant access|scarica ora|obtener acceso|comprar ahora)", re.I)
+                         r"get instant access|scarica ora|obtener acceso|"
+                         r"inscr[ií]b|inscri[cç][aã]o|iscriv|matricul|matr[ií]cula|enroll|"
+                         r"ap[uú]ntate|contratar|suscribirme)", re.I)
 RE_DESCARGA = re.compile(r"(descarga|descargable|acceso inmediato|entrega inmediata|al instante|"
                          r"download|instant access|immediat|acesso imediato|scaricabil)", re.I)
 RE_DIGITAL = re.compile(r"\b(pdf|imprimibles?|stampabil\w*|printables?|plantillas?|templates?|"
@@ -353,7 +355,17 @@ RE_ACADEMIA = re.compile(r"(t[ií]tulo oficial|titulaci[oó]n|certificado de pro
                          r"formaci[oó]n bonificada|fundae|m[aá]ster universitario|"
                          r"prevenci[oó]n de riesgos|compliance|matr[ií]cula)", re.I)
 RE_TIENDA = re.compile(r"(env[ií]o gratis|gastos de env[ií]o|spedizione|frete|talla|taglia|"
-                       r"devoluciones|reso gratuito|en stock|agotado|esaurito|nuestra tienda)", re.I)
+                       r"devoluciones|reso gratuito|en stock|agotado|esaurito|nuestra tienda|"
+                       r"carrello|carrito|añadir al carrito|add to cart|acquista ora|compra ahora|"
+                       r"checkout|ordine|pedido|env[ií]o en \d+|entrega en \d+)", re.I)
+
+# Producto físico: si aparecen dos o más señales, no es un infoproducto modelable
+# (haría falta fabricante, inventario y logística). Aprendido con Luvain: 190 anuncios
+# en cohorte vendiendo astaxantina en cápsulas, clasificado como «captación».
+RE_FISICO = re.compile(r"(integratore|integratori|suplemento|suplementos|c[aá]psulas?|capsule|"
+                       r"softgel|compresse|comprimidos|col[aá]geno|crema facial|s[eé]rum|"
+                       r"perfume|champ[uú]|jab[oó]n|vitamina|omega ?3|colágeno|\b\d+\s?mg\b|"
+                       r"dosis diaria|dosaggio|contenido neto|peso neto|tallas?|taglie)", re.I)
 RE_MARCA = re.compile(r"(mi m[eé]todo|il mio metodo|soy (?:\w+ )?(?:coach|mentor)|"
                       r"mentor[ií]a|mentoring|sesi[oó]n estrat[eé]gica|llamada de descubrimiento|"
                       r"agenda (?:tu|una) llamada|aplica(?:r)? (?:ahora|aqu[ií])|plazas limitadas)", re.I)
@@ -378,8 +390,12 @@ def clasifica_landing(txt, url=""):
     tienda = len(RE_TIENDA.findall(t))
     if RE_ACADEMIA.search(t):
         return "descartado", "academia", "academia/curso con titulación: servicio, no impulso"
-    if tienda >= 2 and digital < 2:
-        return "descartado", "retail", "tienda física: envío, tallas o stock"
+    fisico = len(RE_FISICO.findall(t))
+    if fisico >= 2:
+        return "descartado", "fisico", ("producto físico (%d señales): cápsulas, suplemento o "
+                                        "cosmética. No modelable sin fabricante" % fisico)
+    if tienda >= 3 or (tienda >= 2 and digital == 0):
+        return "descartado", "retail", "tienda física: carrito, envío o stock"
     if RE_MARCA.search(t) and not precios:
         return "descartado", "marca_personal", "puerta a mentoría o marca personal, sin precio"
     if (digital or descarga) and checkout and precios:

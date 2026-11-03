@@ -98,6 +98,22 @@ Cómo se detecta: en la landing, comparar la **moneda del precio** con el **paí
 - **Whale dominante**: 50+ ads en cohorte de un solo jugador en el mercado destino. No se compite de frente.
 - **Gremio sin producto digital** tras 100 anuncios leídos.
 
+## El podio siempre lo ocupa el retail
+
+Dos cazas distintas, misma trampa: el anunciante con más cohorte era un comercio físico.
+
+| Caso | Cohorte | Días | Qué vendía |
+|---|---|---|---|
+| LacariaRicami (IT) | 179/187 | 44 | lanas y mercería |
+| Luvain (IT) | **190/208** | 65 | astaxantina en cápsulas |
+
+**Regla: producto físico = descartado, salvo que tengas fabricante detrás.** Un suplemento o una
+tienda exige inventario, logística y asumir claims de salud. Y ojo: estas tiendas esconden el precio
+tras el carrito, así que parecen un embudo digital sin precio. Se detectan por señales de producto
+(`capsule`, `softgel`, `integratore`, `suplemento`, `mg`, `tallas`), no por el precio.
+
+**Nunca decidas con el primer puesto de la lista.** Mira qué vende antes de emocionarte con la cohorte.
+
 ## Pipeline
 
 Los scripts viven en `scripts/`. Ejecutar desde la raíz del kit.

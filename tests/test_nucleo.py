@@ -195,5 +195,47 @@ class Pipeline(unittest.TestCase):
         self.assertTrue(lineas[0].startswith("fecha,market,page"))
 
 
+class ClasificacionLanding(unittest.TestCase):
+    """Regresión: los tres falsos positivos que costaron una caza entera."""
+
+    RELLENO = (" Aprende paso a paso con material descargable y acceso desde cualquier "
+               "dispositivo, actualizado cada temporada y explicado con ejemplos reales.")
+
+    def test_suplemento_es_fisico(self):
+        # Luvain: 190 anuncios en cohorte vendiendo astaxantina en cápsulas.
+        txt = ("SPEDIZIONE GRATIS IN 24/48H APRI CARRELLO Astaxantina dosaggio 12 mg en una "
+               "softgel quotidiana. ACQUISTA ORA 70% DI SCONTO Garanzia 90 giorni "
+               "integratore alimentare 30 capsule molli." + self.RELLENO)
+        v, tipo, motivo = N.clasifica_landing(txt, "https://luvain.it")
+        self.assertEqual(v, "descartado")
+        self.assertEqual(tipo, "fisico")
+        self.assertIn("fabricante", motivo)
+
+    def test_pdf_con_precio_es_modelable(self):
+        # Mundo de La Costura: «50 bolsas de tela en PDF», R$ 97. Antes salía sin_oferta.
+        txt = ("50 Bolsas de Tecido em PDF com moldes cotados. Acesso imediato apos o pagamento. "
+               "R$ 97,00. Comprar agora e baixar o PDF na hora com os 50 moldes prontos."
+               + self.RELLENO)
+        v, tipo, _ = N.clasifica_landing(txt, "https://mundodelacostura.com")
+        self.assertEqual(v, "modelable")
+        self.assertEqual(tipo, "infoproducto")
+
+    def test_tienda_fisica_es_retail(self):
+        # Mercería con 179 anuncios en cohorte: el podio siempre lo ocupa el retail.
+        txt = ("Nuestra tienda de lanas. Envio gratis a partir de 30 EUR. Tallas y colores "
+               "disponibles. Anade al carrito y recibe en 48 horas. Devoluciones sin coste."
+               + self.RELLENO)
+        v, tipo, _ = N.clasifica_landing(txt, "https://lacariaricami.store")
+        self.assertEqual(v, "descartado")
+        self.assertEqual(tipo, "retail")
+
+    def test_academia_no_es_impulso(self):
+        txt = ("Titulo oficial de logopeda con titulacion homologada. Matricula abierta todo el "
+               "ano. Formacion bonificada para profesionales sanitarios." + self.RELLENO)
+        v, tipo, _ = N.clasifica_landing(txt, "https://fonoaprende.com")
+        self.assertEqual(v, "descartado")
+        self.assertEqual(tipo, "academia")
+
+
 if __name__ == "__main__":
     unittest.main()
